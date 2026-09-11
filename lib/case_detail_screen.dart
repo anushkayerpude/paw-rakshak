@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'theme/app_theme.dart';
+import 'services/case_repository.dart';
 
 class CaseDetailScreen extends StatefulWidget {
+  final String? caseId;
   final String species;
   final String emoji;
   final String severity;
@@ -8,8 +12,12 @@ class CaseDetailScreen extends StatefulWidget {
   final String description;
   final String location;
   final String distance;
+  final String? imagePath;
 
-  const CaseDetailScreen({super.key, 
+  const CaseDetailScreen({
+    super.key,
+    this.caseId,
+    this.imagePath,
     required this.species,
     required this.emoji,
     required this.severity,
@@ -25,253 +33,652 @@ class CaseDetailScreen extends StatefulWidget {
 
 class _CaseDetailScreenState extends State<CaseDetailScreen> {
   bool _responded = false;
+  String _responseRole = 'Transporter';
 
-  void _respond() {
-    setState(() => _responded = true);
-    showDialog(
+  @override
+  void initState() {
+    super.initState();
+    if (widget.caseId != null) {
+      final c = CaseRepository.instance.getCaseById(widget.caseId!);
+      if (c != null && c.userResponseRole != null) {
+        _responded = true;
+        _responseRole = c.userResponseRole!;
+      }
+    }
+  }
+
+  void _showHelpDialog() {
+    showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16)),
-        content: Column(
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Volunteer to Assist This Case',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Select how you can contribute to this rescue operation:',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  'Transporter (Vehicle)',
+                  'On-Site First Aid',
+                  'Temporary Foster',
+                  'Vet Consultation',
+                ].map((role) {
+                  final isSel = _responseRole == role;
+                  return ChoiceChip(
+                    label: Text(role),
+                    selected: isSel,
+                    selectedColor: AppColors.primaryLight,
+                    backgroundColor: AppColors.surfaceSubtle,
+                    side: BorderSide(
+                      color: isSel ? AppColors.primary : AppColors.border,
+                    ),
+                    labelStyle: TextStyle(
+                      color: isSel ? AppColors.primaryDark : AppColors.textSecondary,
+                      fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                      fontSize: 12,
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    showCheckmark: false,
+                    onSelected: (_) {
+                      setModalState(() => _responseRole = role);
+                      setState(() => _responseRole = role);
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    setState(() => _responded = true);
+
+                    if (widget.caseId != null) {
+                      CaseRepository.instance.respondToCase(widget.caseId!, _responseRole);
+                    }
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: AppColors.primaryDark,
+                        content: Text('Thank you! Dispatch team alerted that you are assisting as $_responseRole.'),
+                      ),
+                    );
+                  },
+                  child: const Text('Confirm Response & Join Chat'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDonateSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('🐾', style: TextStyle(fontSize: 48)),
-            SizedBox(height: 12),
-            Text('Thank you!',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF16a34a))),
-            SizedBox(height: 8),
-            Text(
-              'The person who reported this animal has been notified. You are a hero!',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600])),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Row(
+              children: [
+                Icon(Icons.volunteer_activism, color: AppColors.emergency, size: 22),
+                SizedBox(width: 8),
+                Text(
+                  'Fund Medical Care',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '100% of contributions directly offset emergency medications, dressings, and veterinary clinic charges.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                _DonationTier(100, 'Antiseptic & Bandages', () => _completeDonation(100)),
+                const SizedBox(width: 8),
+                _DonationTier(250, 'Antibiotics & Fluids', () => _completeDonation(250)),
+                const SizedBox(width: 8),
+                _DonationTier(500, 'Full Vet Diagnosis', () => _completeDonation(500)),
+                const SizedBox(width: 8),
+                _DonationTier(1000, 'Critical Care', () => _completeDonation(1000)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceSubtle,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.shield_outlined, size: 16, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Verified treatment ledger published upon case discharge.',
+                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close',
-              style: TextStyle(color: Color(0xFF16a34a))),
-          )
-        ],
       ),
+    );
+  }
+
+  void _completeDonation(int amount) {
+    Navigator.pop(context);
+
+    if (widget.caseId != null) {
+      CaseRepository.instance.donateToCase(widget.caseId!, amount);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.primaryDark,
+        content: Text('Contribution of ₹$amount received. You helped save a life!'),
+      ),
+    );
+  }
+
+  void _copyProtocol() {
+    Clipboard.setData(ClipboardData(
+      text: 'PawRakshak Emergency Protocol for ${widget.species} (${widget.location}):\n'
+          'Status: ${widget.severity}\n'
+          'Immediate action: Keep warm and quiet. Do not administer human painkillers. Provide dropper water.',
+    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Protocol copied to clipboard')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-
-          // Big header with animal emoji
+          // Dynamic Header
           SliverAppBar(
             expandedHeight: 220,
             pinned: true,
-            backgroundColor: widget.severityColor,
+            backgroundColor: AppColors.primaryDark,
             foregroundColor: Colors.white,
             flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                color: widget.severityColor.withOpacity(0.15),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(height: 40),
-                    Text(widget.emoji,
-                      style: TextStyle(fontSize: 80)),
-                    SizedBox(height: 8),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 6),
+              background: widget.imagePath != null
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.asset(widget.imagePath!, fit: BoxFit.cover),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                AppColors.background.withValues(alpha: 0.5),
+                                AppColors.background.withValues(alpha: 0.95),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 16,
+                          left: 16,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: widget.severityColor,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              '${widget.severity.toUpperCase()} PRIORITY',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Container(
                       decoration: BoxDecoration(
-                        color: widget.severityColor,
-                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primaryDark,
+                            widget.severityColor.withValues(alpha: 0.85),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                       ),
-                      child: Text(widget.severity,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold)),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(height: 36),
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+                              ),
+                              child: Text(widget.emoji, style: const TextStyle(fontSize: 52)),
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: widget.severityColor,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '${widget.severity.toUpperCase()} PRIORITY',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ],
-                ),
-              ),
             ),
           ),
 
-          // Content
+          // Body Content
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
-                  // Animal + location
-                  Text(widget.species,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold)),
-                  SizedBox(height: 4),
-                  Row(children: [
-                    Icon(Icons.location_on,
-                      size: 16, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text(widget.location,
-                      style: TextStyle(color: Colors.grey)),
-                    Spacer(),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF16a34a).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                  // Title & Meta Info
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${widget.species} Emergency Rescue',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.4,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textSecondary),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    widget.location,
+                                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Text(widget.distance,
-                        style: TextStyle(
-                          color: Color(0xFF16a34a),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12)),
-                    ),
-                  ]),
-                  SizedBox(height: 20),
-
-                  // What was reported
-                  _SectionTitle('What was reported'),
-                  SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Text(widget.description,
-                      style: TextStyle(
-                        fontSize: 15, height: 1.5)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.primaryBorder),
+                        ),
+                        child: Text(
+                          widget.distance,
+                          style: const TextStyle(
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 20),
 
-                  // AI First Aid — THE KEY FEATURE
-                  _SectionTitle('🩺 AI First Aid Guide'),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 18),
+
+                  // Triage Status Step Indicator
                   Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green),
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Do these RIGHT NOW:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green[800])),
-                        SizedBox(height: 8),
-                        _AidStep('Keep the animal warm and calm'),
-                        _AidStep('Do NOT move if spine injury suspected'),
-                        _AidStep('Give water slowly with a dropper'),
-                        _AidStep('Cover wounds with clean cloth'),
-                        SizedBox(height: 12),
-                        Text('Do NOT do these:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red[800])),
-                        SizedBox(height: 8),
-                        _DontStep('Give human medicine'),
-                        _DontStep('Force feed food'),
-                        _DontStep('Leave the animal alone'),
-                        SizedBox(height: 12),
-                        Container(
-                          padding: EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[50],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(children: [
-                            Icon(Icons.info_outline,
-                              color: Colors.blue, size: 16),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Tell the vet: Animal found on street, '
-                                'symptoms for unknown duration.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.blue[800])),
-                            ),
-                          ]),
+                        const Text(
+                          'Rescue Pipeline Status',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            _PipelineStep('Reported', true, true),
+                            _PipelineStep('Triage', true, true),
+                            _PipelineStep('Rescuer', _responded, false),
+                            _PipelineStep('Safe', false, false),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(height: 20),
 
-                  // Nearby vets
-                  _SectionTitle('Nearby Vets Available'),
-                  SizedBox(height: 8),
-                  _VetCard('Dr. Mehta', 'Dogs & Cats',
-                    '0.8 km', '4.9', true),
-                  SizedBox(height: 8),
-                  _VetCard('Dr. Shah', 'All Animals',
-                    '2.1 km', '4.7', true),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // I CAN HELP button
+                  // Situation Summary Card
+                  const _SectionHeader('Reported Incident Details'),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.description,
+                          style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 10),
+                        const Divider(color: AppColors.borderSubtle, height: 1),
+                        const SizedBox(height: 8),
+                        const Row(
+                          children: [
+                            Icon(Icons.schedule, size: 12, color: AppColors.textMuted),
+                            SizedBox(width: 4),
+                            Text(
+                              'Reported by citizen responder in Ahmedabad area',
+                              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // AI First Aid Protocol Card
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const _SectionHeader('AI Immediate First-Aid Protocol'),
+                      TextButton.icon(
+                        onPressed: _copyProtocol,
+                        icon: const Icon(Icons.copy_outlined, size: 14, color: AppColors.primary),
+                        label: const Text(
+                          'Share Protocol',
+                          style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.primaryBorder),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Do this
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.primaryBorder),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Row(
+                                children: [
+                                  Icon(Icons.check_circle_outline, color: AppColors.primary, size: 18),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'DO THIS IMMEDIATELY:',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primaryDark,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+                              _ProtocolPoint('Keep animal still, shaded, and warm with cloth or cardboard.'),
+                              _ProtocolPoint('If internal or spinal trauma suspected, do not lift unnecessarily.'),
+                              _ProtocolPoint('Hydrate sparingly with a clean dropper; do not submerge muzzle.'),
+                              _ProtocolPoint('Cover any open lacerations gently with sterile clean bandage.'),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // Do not do this
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.emergencyLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.emergencyBorder),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Row(
+                                children: [
+                                  Icon(Icons.cancel_outlined, color: AppColors.emergency, size: 18),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'STRICT PRECAUTIONS:',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.emergency,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+                              _ProtocolPoint('Never administer human medications like paracetamol or aspirin.'),
+                              _ProtocolPoint('Do not force solid food down the animal throat.'),
+                              _ProtocolPoint('Avoid sudden loud noises or surrounding the injured animal.'),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // Vet handover note
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.moderateLight,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.moderateBorder),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 16, color: AppColors.moderate),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Handover Note: Mention exact time of finding and whether pupil response was normal.',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textPrimary, height: 1.35),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 22),
+
+                  // Nearby Verified Vets
+                  const _SectionHeader('Nearby Verified Responders & Clinics'),
+                  const SizedBox(height: 8),
+                  const _VetTile(
+                    name: 'Dr. Rajiv Mehta',
+                    clinic: 'Navrangpura Veterinary Clinic',
+                    distance: '0.8 km',
+                    rating: '4.9',
+                    isAvailable: true,
+                  ),
+                  const SizedBox(height: 8),
+                  const _VetTile(
+                    name: 'Dr. Ananya Shah',
+                    clinic: 'Satellite Animal Hospital',
+                    distance: '1.9 km',
+                    rating: '4.8',
+                    isAvailable: true,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Action Buttons
                   SizedBox(
                     width: double.infinity,
-                    height: 56,
+                    height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: _responded ? null : _respond,
+                      onPressed: _responded ? null : _showHelpDialog,
                       icon: Icon(
-                        _responded
-                          ? Icons.check : Icons.volunteer_activism,
-                        color: Colors.white),
+                        _responded ? Icons.check_circle : Icons.volunteer_activism,
+                        color: Colors.white,
+                      ),
                       label: Text(
-                        _responded
-                          ? 'Responding ✓' : 'I Can Help This Animal',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold)),
+                        _responded ? 'Assisting as $_responseRole' : 'I Can Help This Animal',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _responded
-                          ? Colors.grey : Color(0xFF16a34a),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                        backgroundColor: _responded ? AppColors.textMuted : AppColors.primary,
                       ),
                     ),
                   ),
-                  SizedBox(height: 12),
 
-                  // Donate button
+                  const SizedBox(height: 10),
+
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: 48,
                     child: OutlinedButton.icon(
-                      onPressed: () => _showDonateSheet(context),
-                      icon: Icon(Icons.favorite,
-                        color: Colors.red),
-                      label: Text('Fund Treatment',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold)),
+                      onPressed: _showDonateSheet,
+                      icon: const Icon(Icons.favorite_outline, color: AppColors.emergency, size: 18),
+                      label: const Text(
+                        'Fund Medical Treatment',
+                        style: TextStyle(color: AppColors.emergency, fontWeight: FontWeight.bold),
+                      ),
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                        side: const BorderSide(color: AppColors.emergencyBorder, width: 1.5),
                       ),
                     ),
                   ),
-                  SizedBox(height: 30),
-
                 ],
               ),
             ),
@@ -280,167 +687,226 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
       ),
     );
   }
-
-  void _showDonateSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Fund This Animal\'s Treatment',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            Text('100% goes directly to vet treatment',
-              style: TextStyle(color: Colors.grey)),
-            SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [50, 100, 250, 500].map((amount) =>
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(
-                        '❤️ ₹$amount donated! Thank you!')));
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF16a34a),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: Text('₹$amount',
-                    style: TextStyle(color: Colors.white)),
-                )
-              ).toList(),
-            ),
-            SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
-// Helper widgets
-class _SectionTitle extends StatelessWidget {
+class _SectionHeader extends StatelessWidget {
   final String title;
-  const _SectionTitle(this.title);
+  const _SectionHeader(this.title);
+
   @override
   Widget build(BuildContext context) {
-    return Text(title,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold));
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+      ),
+    );
   }
 }
 
-class _AidStep extends StatelessWidget {
+class _ProtocolPoint extends StatelessWidget {
   final String text;
-  const _AidStep(this.text);
+  const _ProtocolPoint(this.text);
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('✅ ',
-            style: TextStyle(fontSize: 13)),
-          Expanded(child: Text(text,
-            style: TextStyle(fontSize: 13, height: 1.4))),
+          const Text('• ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.textPrimary),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _DontStep extends StatelessWidget {
-  final String text;
-  const _DontStep(this.text);
+class _PipelineStep extends StatelessWidget {
+  final String label;
+  final bool isCompleted;
+  final bool hasNext;
+
+  const _PipelineStep(this.label, this.isCompleted, this.hasNext);
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 6),
+    return Expanded(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('❌ ',
-            style: TextStyle(fontSize: 13)),
-          Expanded(child: Text(text,
-            style: TextStyle(fontSize: 13, height: 1.4))),
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: isCompleted ? AppColors.primary : AppColors.surfaceSubtle,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isCompleted ? AppColors.primary : AppColors.border,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Center(
+                    child: isCompleted
+                        ? const Icon(Icons.check, size: 12, color: Colors.white)
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isCompleted ? FontWeight.bold : FontWeight.w500,
+                    color: isCompleted ? AppColors.primaryDark : AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          if (hasNext)
+            Container(
+              width: 18,
+              height: 2,
+              color: isCompleted ? AppColors.primary : AppColors.border,
+            ),
         ],
       ),
     );
   }
 }
 
-class _VetCard extends StatelessWidget {
-  final String name, specialty, distance, rating;
-  final bool available;
-  const _VetCard(this.name, this.specialty,
-           this.distance, this.rating, this.available);
+class _VetTile extends StatelessWidget {
+  final String name;
+  final String clinic;
+  final String distance;
+  final String rating;
+  final bool isAvailable;
+
+  const _VetTile({
+    required this.name,
+    required this.clinic,
+    required this.distance,
+    required this.rating,
+    required this.isAvailable,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [BoxShadow(
-          color: Colors.black.withOpacity(0.04),
-          blurRadius: 6, offset: Offset(0, 2))],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Row(children: [
-        CircleAvatar(
-          backgroundColor: Color(0xFF16a34a).withOpacity(0.1),
-          child: Text('👨‍⚕️')),
-        SizedBox(width: 12),
-        Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(name,
-              style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(specialty,
-              style: TextStyle(
-                color: Colors.grey, fontSize: 12)),
-          ],
-        )),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text('⭐ $rating',
-              style: TextStyle(fontSize: 12)),
-            SizedBox(height: 2),
-            Text(distance,
-              style: TextStyle(
-                color: Color(0xFF16a34a),
-                fontSize: 12,
-                fontWeight: FontWeight.bold)),
-          ],
-        ),
-        SizedBox(width: 8),
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.green[50],
-            borderRadius: BorderRadius.circular(8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.medical_services_outlined, color: AppColors.primary, size: 18),
           ),
-          child: Text('Free',
-            style: TextStyle(
-              color: Colors.green[700],
-              fontSize: 11,
-              fontWeight: FontWeight.bold)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.verified, size: 14, color: AppColors.primary),
+                  ],
+                ),
+                Text(clinic, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.star_rounded, size: 14, color: AppColors.urgent),
+                  const SizedBox(width: 2),
+                  Text(rating, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                distance,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DonationTier extends StatelessWidget {
+  final int amount;
+  final String description;
+  final VoidCallback onTap;
+
+  const _DonationTier(this.amount, this.description, this.onTap);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.primaryBorder),
+          ),
+          child: Column(
+            children: [
+              Text(
+                '₹$amount',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
-      ]),
+      ),
     );
   }
 }

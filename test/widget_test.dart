@@ -1,30 +1,27 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:paw_rakshak/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('PawRakshak landing page and live dashboard smoke test', (WidgetTester tester) async {
+    // Build PawRakshak app
+    await tester.pumpWidget(const PawRakshakApp());
+    await tester.pump(const Duration(milliseconds: 200));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify Landing Page elements
+    expect(find.text('PawRakshak'), findsWidgets);
+    expect(find.text('OVER 1,400 ACTIVE VOLUNTEERS IN GUJARAT'), findsOneWidget);
+    expect(find.text('Enter Live Rescue Dashboard'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Tap to switch to Live Dashboard
+    await tester.tap(find.text('Enter Live Rescue Dashboard'));
+    await tester.pump(const Duration(milliseconds: 200));
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify Live Dashboard elements
+    expect(find.text('Live Rescue Dashboard'), findsOneWidget);
+    expect(find.text('Active Cases'), findsOneWidget);
+    expect(find.text('Vets Online'), findsOneWidget);
+    expect(find.text('Care Fund'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget); // Search bar
   });
 }
