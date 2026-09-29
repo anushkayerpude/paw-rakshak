@@ -17,7 +17,7 @@ PawRakshak is an emergency animal welfare platform connecting citizens, voluntee
 - **Public Landing Page**: Storytelling hero with real-time response metrics, "How PawRakshak Works" 3-step guide, and verified animal recovery stories.
 - **Live Incident Dashboard**: Reactive triage feed tracking active SOS alerts, volunteer assignments, and care funding progress.
 - **Instant AI First-Aid Protocol**: Powered by Gemini to provide immediate stabilization steps, critical precautions, and clinic handover briefing before medical help arrives.
-- **5km Radius Volunteer Dispatch**: Alerts nearby registered volunteers with transport vehicles, rescue crates, and on-site dressing kits.
+- **5km Radius Volunteer Dispatch**: Alerts nearby registered volunteers with the transport vehicles, rescue crates, and on-site dressing kits.
 - **100% Transparent Care Ledger**: Micro-donation tiers (₹100, ₹250, ₹500, ₹1000) directly funding emergency medicines, bandages, and surgical treatment.
 - **Emergency Helpline Hub**: One-tap direct dialer to the National Animal Ambulance (`1962`) and local municipal animal control.
 - **Midnight Forest Rescue Theme**: High-contrast, dark-mode design with real documentary rescue photography and intuitive mobile-first touch targets.
